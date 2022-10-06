@@ -12,7 +12,7 @@ ARG DEV=false
 RUN python -m venv /py && \
     /py/bin/pip install --upgrade pip && \
     /py/bin/pip install -r /tmp/requirements.txt && \
-    if [ $DEV = "true"]; \
+    if [ $DEV = "true" ]; \
         then /py/bin/pip install -r /tmp/requirements.dev.txt ; \
     fi && \
     rm -rf /tmp && \
@@ -21,6 +21,6 @@ RUN python -m venv /py && \
         --no-create-home \
         django-user
 
-ENV PATH="/PY/BIN:$PATH"
+ENV PATH="/py/bin:$PATH"
 
 USER django-user
