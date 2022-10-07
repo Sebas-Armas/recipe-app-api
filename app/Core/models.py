@@ -24,12 +24,13 @@ class UserManager(BaseUserManager):
 
     def create_superuser(self, correo, password):
         """Crea, guarda y regresa el superusuario"""
-        user = self.create_user(email=correo,password=password)
+        user = self.create_user(email=correo, password=password)
         user.is_staff = True
         user.is_superuser = True
         user.save(using=self._db)
 
         return user
+
 
 class User(AbstractBaseUser, PermissionsMixin):
     """User que utilizará el proyecto"""

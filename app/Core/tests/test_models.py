@@ -24,10 +24,10 @@ class ModelTests(TestCase):
     def test_uevo_usuario_correo_normalizado(self):
         """Prueba que los correos sean normalizados en nuevos usuarios."""
         sample_emails = [
-            ['test1@EXAMPLE.com','test1@example.com'],
-            ['Test2@Example.com','Test2@example.com'],
-            ['TEST3@EXAMPLE.COM','TEST3@example.com'],
-            ['test4@example.COM','test4@example.com'],
+            ['test1@EXAMPLE.com', 'test1@example.com'],
+            ['Test2@Example.com', 'Test2@example.com'],
+            ['TEST3@EXAMPLE.COM', 'TEST3@example.com'],
+            ['test4@example.COM', 'test4@example.com'],
         ]
 
         for email, esperado in sample_emails:
@@ -35,7 +35,7 @@ class ModelTests(TestCase):
                 email=email,
                 password="password",
             )
-            self.assertEqual(user.correo,esperado)
+            self.assertEqual(user.correo, esperado)
 
     def test_nuevo_usuario_sin_correo_salta_error(self):
         """Prueba que crear un usuario sin un correo salta un ValueError"""
