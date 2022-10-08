@@ -22,6 +22,8 @@ class UserManager(BaseUserManager):
 
         return user
 
+    # Los nombres de los campos deben ser iguales a los
+    # atributos del modelo al crear superusuario por cli
     def create_superuser(self, correo, password):
         """Crea, guarda y regresa el superusuario"""
         user = self.create_user(email=correo, password=password)
