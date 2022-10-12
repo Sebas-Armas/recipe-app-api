@@ -1,6 +1,7 @@
 """
 Modelos de DB
 """
+from django.conf import settings
 from django.db import models
 from django.contrib.auth.models import (
     AbstractBaseUser,
@@ -44,3 +45,19 @@ class User(AbstractBaseUser, PermissionsMixin):
     objects = UserManager()
 
     USERNAME_FIELD = 'correo'
+
+
+class Receta(models.Model):
+    """Objeto Receta"""
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+    )
+    titulo = models.CharField(max_length=255)
+    tiempo_minutos = models.IntegerField()
+    precio = models.DecimalField(max_digits=5, decimal_places=2)
+    desc = models.TextField(blank=True)
+    link = models.CharField(max_length=255, blank=True)
+
+    def __str__(self):
+        return self.titulo
