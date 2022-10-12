@@ -21,7 +21,7 @@ class ModelTests(TestCase):
         self.assertEqual(user.correo, email)
         self.assertTrue(user.check_password(password))
 
-    def test_uevo_usuario_correo_normalizado(self):
+    def test_nuevo_usuario_correo_normalizado(self):
         """Prueba que los correos sean normalizados en nuevos usuarios."""
         sample_emails = [
             ['test1@EXAMPLE.com', 'test1@example.com'],

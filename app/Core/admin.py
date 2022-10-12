@@ -12,7 +12,7 @@ from Core import models
 class UserAdmin(BaseUserAdmin):
     """Define las paginas admin para Usuarios"""
     ordering = ['id']
-    list_display = ['correo', 'nombre']
+    list_display = ['correo', 'nombre', 'is_superuser', 'is_active']
     fieldsets = (
         (
             None,
