@@ -10,7 +10,7 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 from rest_framework import status
 
-from Core.models import Receta
+from Core.models import Receta, Tag
 
 from receta.serializers import (
     RecetaSerializer,
@@ -85,7 +85,7 @@ class PrivateRecetaAPITests(TestCase):
 
     def test_lista_recetas_limitada_por_usuario(self):
         """Prueba la recuperación de una lista de recetas
-            Limitada por un usuario autenticado
+            Limitada por el usuario autenticado
         """
         otro_user = crear_usuario(
             correo='otro@example.com',
@@ -93,15 +93,14 @@ class PrivateRecetaAPITests(TestCase):
             nombre='Test Otro'
         )
         crear_receta(user=otro_user)
-        crear_receta(user=self.user)
+        receta = crear_receta(user=self.user, titulo='receta de usuario único')
 
         res = self.client.get(RECETAS_URL)
 
-        recetas = Receta.objects.filter(user=self.user)
-        serializer = RecetaSerializer(recetas, many=True)
-
         self.assertEqual(res.status_code, status.HTTP_200_OK)
-        self.assertEqual(res.data, serializer.data)
+        self.assertEqual(len(res.data), 1)
+        self.assertEqual(res.data[0]['titulo'], receta.titulo)
+        self.assertEqual(res.data[0]['id'], receta.id)
 
     def test_get_receta_detalle(self):
         """Prueba de obtención del detalle de la receta"""
@@ -209,3 +208,97 @@ class PrivateRecetaAPITests(TestCase):
 
         self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
         self.assertTrue(Receta.objects.filter(id=receta.id).exists())
+
+    def crear_receta_con_nuevos_tags(self):
+        """Prueba la creación de una receta con nuevos tags"""
+        payload = {
+            'titulo': 'Nuevo Titulo',
+            'link': 'http://example.com/nueva-receta.pdf',
+            'desc': 'Nueva Descripción',
+            'tiempo_minutos': 10,
+            'precio': Decimal('2.50'),
+            'tags': [{'nombre': 'China'}, {'nombre': 'Cena'}],
+        }
+        res = self.client.post(RECETAS_URL, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        recetas = Receta.objects.filter(user=self.user)
+        self.assertEqual(recetas.count(), 1)
+        receta = recetas[0]
+        self.assertEqual(receta.tags.count(), 2)
+        for tag in payload['tags']:
+            exists = receta.tags.filter(
+                nombre=tag['nombre'],
+                user=self.user,
+            ).exists()
+            self.assertTrue(exists)
+
+    def test_crear_receta_con_tags_existentes(self):
+        """Prueba crear una receta con tags existentes"""
+        tag_indian = Tag.objects.create(user=self.user, nombre='Indian')
+        payload = {
+            'titulo': 'Nuevo Titulo',
+            'tiempo_minutos': 10,
+            'precio': Decimal('2.50'),
+            'tags': [{'nombre': 'Indian'}, {'nombre': 'Cena'}],
+        }
+        res = self.client.post(RECETAS_URL, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        recetas = Receta.objects.filter(user=self.user)
+        self.assertEqual(recetas.count(), 1)
+        receta = recetas[0]
+        self.assertEqual(receta.tags.count(), 2)
+        self.assertIn(tag_indian, receta.tags.all())
+        for tag in payload['tags']:
+            exists = receta.tags.filter(
+                nombre=tag['nombre'],
+                user=self.user,
+            ).exists()
+            self.assertTrue(exists)
+
+    def test_crear_tag_al_modificar_receta(self):
+        """Prueba de crear un Tag al actualizar una receta"""
+        receta = crear_receta(user=self.user)
+
+        payload = {
+            'tags': [{'nombre': 'Lunch'}],
+        }
+        url = detail_url(receta.id)
+        res = self.client.patch(url, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        new_tag = Tag.objects.get(user=self.user, nombre='Lunch')
+        self.assertIn(new_tag, receta.tags.all())
+
+    def test_modificar_receta_asignar_tag(self):
+        """Prueba asignar un tag existente cuando se modifica una receta"""
+        tag_indian = Tag.objects.create(user=self.user, nombre='Indian')
+        receta = crear_receta(user=self.user)
+        receta.tags.add(tag_indian)
+
+        tag_lunch = Tag.objects.create(user=self.user, nombre='Lunch')
+        payload = {
+            'tags': [{'nombre': 'Lunch'}],
+        }
+        url = detail_url(receta.id)
+        res = self.client.patch(url, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn(tag_lunch, receta.tags.all())
+        self.assertNotIn(tag_indian, receta.tags.all())
+
+    def test_limpiar_tags_de_receta(self):
+        """Prueba vaciar el campo de Tags en recetas"""
+        tag_indian = Tag.objects.create(user=self.user, nombre='Indian')
+        receta = crear_receta(user=self.user)
+        receta.tags.add(tag_indian)
+
+        payload = {
+            'tags': [],
+        }
+        url = detail_url(receta.id)
+        res = self.client.patch(url, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(receta.tags.count(), 0)

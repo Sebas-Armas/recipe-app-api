@@ -10,6 +10,8 @@ from receta import views
 
 router = DefaultRouter()
 router.register('recetas', views.RecetaViewSet)
+router.register('tags', views.TagViewSet)
+
 app_name = 'receta'
 
 urlpatterns = [

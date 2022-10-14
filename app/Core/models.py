@@ -58,6 +58,19 @@ class Receta(models.Model):
     precio = models.DecimalField(max_digits=5, decimal_places=2)
     desc = models.TextField(blank=True)
     link = models.CharField(max_length=255, blank=True)
+    tags = models.ManyToManyField('Tag')
 
     def __str__(self):
         return self.titulo
+
+
+class Tag(models.Model):
+    """Tags para filtrar recetas"""
+    nombre = models.CharField(max_length=255)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+    )
+
+    def __str__(self):
+        return self.nombre
