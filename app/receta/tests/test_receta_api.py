@@ -10,7 +10,7 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 from rest_framework import status
 
-from Core.models import Receta, Tag
+from Core.models import Receta, Tag, Ingrediente
 
 from receta.serializers import (
     RecetaSerializer,
@@ -302,3 +302,110 @@ class PrivateRecetaAPITests(TestCase):
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(receta.tags.count(), 0)
+
+    def crear_receta_con_nuevos_ingredientes(self):
+        """Prueba la creación de una receta con nuevos ingredientes"""
+        payload = {
+            'titulo': 'Alitas BBQ',
+            'link': 'http://example.com/nueva-receta.pdf',
+            'desc': 'Nueva Descripción',
+            'tiempo_minutos': 10,
+            'precio': Decimal('12.50'),
+            'ingredientes': [{'nombre': 'Alitas'}, {'nombre': 'Salsa BBQ'}],
+        }
+        res = self.client.post(RECETAS_URL, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        recetas = Receta.objects.filter(user=self.user)
+        self.assertEqual(recetas.count(), 1)
+        receta = recetas[0]
+        self.assertEqual(receta.ingredientes.count(), 2)
+        for ing in payload['ingredientes']:
+            exists = receta.ingredientes.filter(
+                nombre=ing['nombre'],
+                user=self.user,
+            ).exists()
+            self.assertTrue(exists)
+
+    def test_crear_receta_con_ingredientes_existentes(self):
+        """Prueba crear una receta con ingredientes existentes"""
+        ingrediente = Ingrediente.objects.create(
+            user=self.user,
+            nombre='Limón'
+        )
+        payload = {
+            'titulo': 'Ensalada Tomate y Cebolla',
+            'tiempo_minutos': 10,
+            'precio': '5.78',
+            'ingredientes': [{'nombre': 'Lechuga'}, {'nombre': 'Limón'}],
+        }
+        res = self.client.post(RECETAS_URL, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        recetas = Receta.objects.filter(user=self.user)
+        self.assertEqual(recetas.count(), 1)
+        receta = recetas[0]
+        self.assertEqual(receta.ingredientes.count(), 2)
+        self.assertIn(ingrediente, receta.ingredientes.all())
+        for ing in payload['ingredientes']:
+            exists = receta.ingredientes.filter(
+                nombre=ing['nombre'],
+                user=self.user,
+            ).exists()
+            self.assertTrue(exists)
+
+    def test_crear_ingrediente_al_modificar_receta(self):
+        """Prueba de crear un Ingrediente al actualizar una receta"""
+        receta = crear_receta(user=self.user)
+
+        payload = {
+            'ingredientes': [{'nombre': 'Lima'}],
+        }
+        url = detail_url(receta.id)
+        res = self.client.patch(url, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        new_ing = Ingrediente.objects.get(user=self.user, nombre='Lima')
+        self.assertIn(new_ing, receta.ingredientes.all())
+
+    def test_modificar_receta_asignar_ingrediente(self):
+        """Prueba asignar un ingrediente existente
+            cuando se modifica una receta"""
+        ing_tomate = Ingrediente.objects.create(
+            user=self.user,
+            nombre='Tomate'
+        )
+        receta = crear_receta(user=self.user)
+        receta.ingredientes.add(ing_tomate)
+
+        ing_cebolla = Ingrediente.objects.create(
+            user=self.user,
+            nombre='Cebolla'
+        )
+        payload = {
+            'ingredientes': [{'nombre': 'Cebolla'}],
+        }
+        url = detail_url(receta.id)
+        res = self.client.patch(url, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn(ing_cebolla, receta.ingredientes.all())
+        self.assertNotIn(ing_tomate, receta.ingredientes.all())
+
+    def test_limpiar_ingredientes_de_receta(self):
+        """Prueba vaciar el campo de Ingredientes en recetas"""
+        ing_tomate = Ingrediente.objects.create(
+            user=self.user,
+            nombre='Tomate'
+        )
+        receta = crear_receta(user=self.user)
+        receta.ingredientes.add(ing_tomate)
+
+        payload = {
+            'ingredientes': [],
+        }
+        url = detail_url(receta.id)
+        res = self.client.patch(url, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(receta.ingredientes.count(), 0)

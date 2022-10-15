@@ -1,5 +1,5 @@
 """
-Pruebas para el API de Recetas
+Pruebas para el API de Tags
 """
 
 from django.test import TestCase
