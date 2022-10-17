@@ -148,3 +148,8 @@ AUTH_USER_MODEL = 'Core.User'
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema'
 }
+
+#Cargar imagenes por la interfaz del navegador
+SPECTACULAR_SETTINGS = {
+    'COMPONENT_SPLIT_REQUEST': True
+}
