@@ -451,7 +451,7 @@ class PrivateRecetaAPITests(TestCase):
         r2.ingredientes.add(ing2)
         r3 = crear_receta(user=self.user, titulo='Camarones Apanados')
 
-        params = {'tags': f'{ing1.id},{ing2.id}'}
+        params = {'ingredientes': f'{ing1.id},{ing2.id}'}
         res = self.client.get(RECETAS_URL, params)
 
         s1 = RecetaSerializer(r1)

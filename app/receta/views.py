@@ -1,7 +1,6 @@
 """
 Views para el API de Receta
 """
-
 from rest_framework import viewsets, mixins, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -10,8 +9,30 @@ from rest_framework.permissions import IsAuthenticated
 
 from Core.models import Receta, Tag, Ingrediente
 from receta import serializers
+from drf_spectacular.utils import(
+    extended_schema_view,
+    extended_schema,
+    OpenApiParameter,
+    OpenApiTypes,
+)
 
 
+@extended_schema_view(
+    list=extended_schema(
+        parameters=[
+            OpenApiParameter(
+                'tags',
+                OpenApiTypes.STR,
+                description='Lista de tags IDs separados por coma para filtrar'
+            ),
+            OpenApiParameter(
+                'ingredientes',
+                OpenApiTypes.STR,
+                description='Lista de ingredientes IDs separados por coma para filtrar'
+            )
+        ]
+    )
+)
 class RecetaViewSet(viewsets.ModelViewSet):
     """Vista para gestionar APIs recetas"""
     serializer_class = serializers.RecetaDetailSerializer
@@ -19,9 +40,25 @@ class RecetaViewSet(viewsets.ModelViewSet):
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
+    def _params_to_ints(self, qs):
+        """Convierte una lista de strings a enteros"""
+        return [int(str_id) for str_id in qs.split(',')]
+
     def get_queryset(self):
         """Recupera las recetas del usuario autenticado"""
-        return self.queryset.filter(user=self.request.user).order_by('-id')
+        tags = self.request.query_params.get('tags')
+        ingredientes = self.request.query_params.get('ingredientes')
+        queryset = self.queryset
+        if tags:
+            tags_id = self._params_to_ints(tags)
+            queryset = queryset.filter(tags__id__in=tags_id)
+        if ingredientes:
+            ing_id = self._params_to_ints(ingredientes)
+            queryset = queryset.filter(ingredientes__id__in=ing_id)
+
+        return queryset.filter(
+            user=self.request.user
+        ).order_by('-id').distinct()
 
     def get_serializer_class(self):
         """Recupera la clase serializer para la petición"""
