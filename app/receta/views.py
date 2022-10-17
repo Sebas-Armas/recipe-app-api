@@ -1,6 +1,12 @@
 """
 Views para el API de Receta
 """
+from drf_spectacular.utils import (
+    extend_schema_view,
+    extend_schema,
+    OpenApiParameter,
+    OpenApiTypes,
+)
 from rest_framework import viewsets, mixins, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -9,16 +15,10 @@ from rest_framework.permissions import IsAuthenticated
 
 from Core.models import Receta, Tag, Ingrediente
 from receta import serializers
-from drf_spectacular.utils import(
-    extended_schema_view,
-    extended_schema,
-    OpenApiParameter,
-    OpenApiTypes,
-)
 
 
-@extended_schema_view(
-    list=extended_schema(
+@extend_schema_view(
+    list=extend_schema(
         parameters=[
             OpenApiParameter(
                 'tags',
@@ -28,7 +28,8 @@ from drf_spectacular.utils import(
             OpenApiParameter(
                 'ingredientes',
                 OpenApiTypes.STR,
-                description='Lista de ingredientes IDs separados por coma para filtrar'
+                description="""Lista de ingredientes IDs separados
+                por coma para filtrar"""
             )
         ]
     )
@@ -86,6 +87,18 @@ class RecetaViewSet(viewsets.ModelViewSet):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                'asignado',
+                OpenApiTypes.INT,
+                enum=[0, 1],
+                description='Filtra por items asigandos a la receta'
+            ),
+        ]
+    )
+)
 class BaseRecetaAttrViewSet(mixins.DestroyModelMixin,
                             mixins.UpdateModelMixin,
                             mixins.ListModelMixin,
@@ -96,7 +109,16 @@ class BaseRecetaAttrViewSet(mixins.DestroyModelMixin,
 
     def get_queryset(self):
         """Recupera los tags del usuario autenticado"""
-        return self.queryset.filter(user=self.request.user).order_by('-nombre')
+        asignado = bool(
+            int(self.request.query_params.get('asignado', 0))
+        )
+        queryset = self.queryset
+        if asignado:
+            queryset = queryset.filter(receta__isnull=False)
+
+        return queryset.filter(
+            user=self.request.user
+        ).order_by('-nombre').distinct()
 
 
 class TagViewSet(BaseRecetaAttrViewSet):

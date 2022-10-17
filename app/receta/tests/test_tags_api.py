@@ -1,6 +1,7 @@
 """
 Pruebas para el API de Tags
 """
+from decimal import Decimal
 
 from django.test import TestCase
 from django.contrib.auth import get_user_model
@@ -9,7 +10,7 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 from rest_framework import status
 
-from Core.models import Tag
+from Core.models import Tag, Receta
 
 from receta.serializers import (
     TagSerializer,
@@ -100,3 +101,51 @@ class PrivateTagAPITests(TestCase):
 
         self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Tag.objects.filter(nombre=tag.nombre).exists())
+
+    def test_filtro_tags_asignados_a_recetas(self):
+        """Prueba el listado de igredientes que
+        se encuentran asignados a recetas"""
+        tag1 = Tag.objects.create(user=self.user, nombre='Desayuno')
+        tag2 = Tag.objects.create(user=self.user, nombre='Lunch')
+        receta = Receta.objects.create(
+            titulo='Waffles',
+            tiempo_minutos=15,
+            precio=Decimal('6.40'),
+            user=self.user
+        )
+        receta.tags.add(tag1)
+
+        res = self.client.get(TAGS_URL, {'asignado': 1})
+
+        s1 = TagSerializer(tag1)
+        s2 = TagSerializer(tag2)
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn(s1.data, res.data)
+        self.assertNotIn(s2.data, res.data)
+
+    def test_filtrado_tags_unicos(self):
+        """Prueba que los tags filtrados no
+        se repitan"""
+        tag = Tag.objects.create(user=self.user, nombre='Costa')
+        Tag.objects.create(user=self.user, nombre='Sierra')
+        receta1 = Receta.objects.create(
+            titulo='Ceviche',
+            tiempo_minutos=45,
+            precio=Decimal('16.78'),
+            user=self.user
+        )
+        receta2 = Receta.objects.create(
+            titulo='Encebollado',
+            tiempo_minutos=34,
+            precio=Decimal('5.50'),
+            user=self.user
+        )
+
+        receta1.tags.add(tag)
+        receta2.tags.add(tag)
+
+        res = self.client.get(TAGS_URL, {'asignado': 1})
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data), 1)
